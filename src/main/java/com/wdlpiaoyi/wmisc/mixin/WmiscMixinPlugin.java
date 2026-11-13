@@ -22,8 +22,8 @@ import java.util.Set;
 public final class WmiscMixinPlugin implements IMixinConfigPlugin {
     /** mixin 简单类名 → 需要的模组 id。没登记的 mixin 一律应用。 */
     private static final Map<String, List<String>> REQUIRED_MODS = Map.of(
-            "IceAndFireConstructMixin", List.of("iceandfire"),
-            "L2WeaponryConstructMixin", List.of("l2weaponry"),
+            "IceAndFireInitMixin", List.of("iceandfire"),
+            "L2WeaponryItemsMixin", List.of("l2weaponry"),
             "ApollyonConfiscateSnapshotMixin", List.of("revelationfix"),
             "MixinSuperpositionHandlerWorthy", List.of("enigmaticlegacy"),
             "QuarkQButtonMixin", List.of("quark")

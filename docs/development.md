@@ -39,10 +39,10 @@ Apollyon 饰品归还用到 curios 槽位 API，仓库是 `https://maven.theillu
 
 1. **目标类不在编译期类路径**时，用 `@Mixin(targets = "全名", remap = false)` + `@Pseudo`，
    不要 import 目标类。`@Pseudo` 还能让注解处理器跳过目标校验（否则要造 stub 类）。
-2. **构造函数不能用 `@At("HEAD")`**：Mixin 会报
-   "targetting a constructor before super()"。要注入到方法体开头，用
-   `@At(value = "INVOKE", target = "Ljava/lang/Object;<init>()V", shift = At.Shift.AFTER)`；
-   释放用 `@At("TAIL")`。
+2. **不要在构造函数里注入前置逻辑**：Mixin 0.8.5 对构造函数只允许 TAIL 注入；HEAD 报
+   "before super()"，INVOKE 注入点报 "Found @Inject targetting a constructor"。
+   要锁「构造期危险区」，就注入它调用的入口方法（例如 `IceAndFire.init()` / `LWItems.register()`）
+   的 HEAD/RETURN。
 3. **不要试图注入 `FMLModContainer#constructMod`**：那在 ModLauncher 启动层，Mixin 只处理游戏层，
    注入不会被应用（实测无任何日志、`.mixin.out` 为空）。要动构造时序就注入被注入模组自己的主类。
 4. 需要参数类型（例如 `PlayerTickrateExecutor$InventoryWork`）而目标类不在 classpath 时，
@@ -67,6 +67,7 @@ Start-Process 'C:\Minecraft\PrismLauncher-Portable\prismlauncher.exe' -ArgumentL
 - 继续出现 `[w_misc] 死锁修复已生效：…`；
 - 最终到 `title-screen-operable`，没有 `waiting on the Class initialization monitor`。
 
-内容过滤的实例侧产物（不属于 jar，重装实例需要重新放）：
-- `minecraft/moonlight-global-datapacks/content_filter/pack.mcmeta`
-- `minecraft/resourcepacks/content-filter.zip`（并写进 `options.txt` 的 `resourcePacks`）
+内容过滤不依赖实例侧文件：规则在 `compat/content/ContentFilterRules`，由 `ResourceManagerFilterMixin`
+在资源管理器返回资源后改写。改动规则后重进游戏即可，不需要重新摆资源包。
+
+

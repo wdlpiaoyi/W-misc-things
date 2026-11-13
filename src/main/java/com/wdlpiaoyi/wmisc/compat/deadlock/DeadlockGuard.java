@@ -10,19 +10,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * iceandfire × l2weaponry 构造期串行化。
+ * iceandfire × l2weaponry 初始化阶段的串行化。
  *
  * <p>问题：Forge 把各 mod 的构造提交到 ForkJoinPool 并行执行。iceandfire 的构造线程持有
  * {@code IafBlocks} 的类初始化锁并等待 {@code IafItems}，l2weaponry 的构造线程正好相反，
  * 构成 JVM 类初始化锁环 —— 两个线程都是 RUNNABLE，进程假死、日志停写、jstack 不报死锁。</p>
  *
- * <p>做法：在这两个 mod 各自主类的构造函数 HEAD 处取同一把共享 {@link ReentrantLock}、RETURN 处释放，
- * 保证两者不同时进入构造阶段；被挡住的线程还没碰过任何一个 Iaf* 类，因此不可能再成环。
- * 其余 mod 照旧并行。</p>
+ * <p>做法：在两个模组真正触碰 Iaf* 类的入口方法（{@code IceAndFire.init()} 与
+ * {@code LWItems.register()}）外用一把共享 {@link ReentrantLock} 互斥；被挡住的线程还没碰过
+ * 任何一个 Iaf* 类，因此不可能再成环。其余 mod 照旧并行。</p>
  *
- * <p>为什么不用 Mixin 注入 {@code FMLModContainer#constructMod}：那个类在 ModLauncher 的启动层，
- * Mixin 只处理游戏层（mod）类，注入不会被应用。改注入 mod 主类是等效的，且确实落在 Mixin 的
- * 应用范围内。</p>
+ * <p>为什么不在构造函数里锁：Mixin 0.8.5 对构造函数只允许 TAIL 注入，
+ * INVOKE 注入点会报 "Found @Inject targetting a constructor"。这两处入口方法覆盖了危险区。</p>
  *
  * <p>开关在「Forge 配置加载之前」就要生效，所以不读 ForgeConfigSpec，而是用 {@link ConfigPeek}
  * 直接读 {@code [features.deadlock_fix]}；系统属性可覆盖，供排查用。</p>
@@ -37,7 +36,7 @@ public final class DeadlockGuard {
     public static final String ICEANDFIRE = "iceandfire";
     public static final String L2WEAPONRY = "l2weaponry";
 
-    /** 这对 mod 共用一把锁：不同时进入构造阶段。 */
+    /** 这对 mod 共用一把锁：不同时进入危险区。 */
     private static final ReentrantLock PAIR_LOCK = new ReentrantLock();
 
     private static final Set<String> ENGAGED = ConcurrentHashMap.newKeySet();
@@ -48,12 +47,10 @@ public final class DeadlockGuard {
     private DeadlockGuard() {
     }
 
-    /**
-     * 在 mod 主类构造函数 HEAD 处调用。返回要释放的锁，不需要串行化时返回 null。
-     */
-    public static ReentrantLock acquire(String modId) {
+    /** 在入口方法 HEAD 处调用。 */
+    public static void acquire(String modId) {
         if (!ENABLED || modId == null || !(ICEANDFIRE.equals(modId) || L2WEAPONRY.equals(modId))) {
-            return null;
+            return;
         }
         if (LOG_EVENTS) {
             LOG.info("[deadlock_fix] waiting ({}) thread={}", modId, Thread.currentThread().getName());
@@ -65,20 +62,20 @@ public final class DeadlockGuard {
         if (LOG_EVENTS) {
             LOG.info("[deadlock_fix] acquired ({}) thread={}", modId, Thread.currentThread().getName());
         }
-        return PAIR_LOCK;
     }
 
-    public static void release(ReentrantLock lock, String modId) {
-        if (lock == null) {
+    /** 在入口方法 RETURN 处调用；未持锁时是安全的 no-op。 */
+    public static void release(String modId) {
+        if (!ENABLED || !PAIR_LOCK.isHeldByCurrentThread()) {
             return;
         }
-        lock.unlock();
+        PAIR_LOCK.unlock();
         if (LOG_EVENTS) {
             LOG.info("[deadlock_fix] released ({}) thread={}", modId, Thread.currentThread().getName());
         }
     }
 
-    /** 已经真正接管过构造阶段的 mod（用于启动自检：两个都在才说明修复确实生效）。 */
+    /** 已经真正接管过初始化阶段的 mod（用于启动自检：两个都在才说明修复确实生效）。 */
     public static Set<String> engaged() {
         return Set.copyOf(ENGAGED);
     }

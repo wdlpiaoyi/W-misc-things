@@ -22,10 +22,11 @@ Minecraft **1.20.1** / **Forge 47.x** 的杂项复合模组：若干互相独立
 
 ## 各处实现要点
 
-**死锁修复**：注入两个 mod **主类构造函数**（`com.iafenvoy.iceandfire.forge.IceAndFireForge`、
-`dev.xkmc.l2weaponry.init.L2Weaponry`）：在 super() 之后取同一把共享锁、TAIL 释放。
-不能用 `FMLModContainer#constructMod`（ModLauncher 启动层，Mixin 覆盖不到，已实测），
-也不能用 `@At("HEAD")`（构造函数 super() 之前注入会被 Mixin 拒绝，已实测）。
+**死锁修复**：锁加在两个模组真正触碰 Iaf* 类的入口方法上——
+`com.iafenvoy.iceandfire.IceAndFire#init()` 与 `dev.xkmc.l2weaponry.init.registrate.LWItems#register()`，
+HEAD 取同一把共享锁、RETURN 释放。
+不能用 `FMLModContainer#constructMod`（ModLauncher 启动层，Mixin 覆盖不到，已实测）；
+也不能注入构造函数（Mixin 0.8.5 在构造函数里只允许 TAIL 注入，已实测）。
 
 **fantasy_ending 数据补丁**：纯资源，`data/fantasy_ending/irons_spellbooks/upgrade_orb_type/fantasy_power.json`，
 值取自 fantasy_ending 原本的代码注册（0.05 / `fantasy_ending:fantasy_spell_power` / `MULTIPLY_BASE`）。
@@ -42,13 +43,13 @@ Minecraft **1.20.1** / **Forge 47.x** 的杂项复合模组：若干互相独立
 **七咒之戒**：`SuperpositionHandler#isTheWorthyOne(Player)` RETURN 注入，创造模式直接 true；
 与附属 EnigmaticAddons 的同点 RETURN 注入叠加安全，不伪造计数（不影响 BlessRing 等级）。
 
-**内容过滤**：
-- 随模组：Malum 的 18 个 prideweave 配方/进度用 `forge:false` 条件屏蔽；原版 `splashes.txt` 覆盖；
-  Quark 彩虹 Q 按钮由 `QuarkQButtonMixin` 固定前景色。
-- 实例侧（跨模组资源顺序不可控，所以放在这里，已应用）：`moonlight-global-datapacks/content_filter`
-  用 `pack.mcmeta` 的 `filter` 屏蔽 Malum 配方/进度与 Mekanism 11 个 pride robit 皮肤；
-  资源包 `resourcepacks/content-filter.zip` 把 Malum pride 贴图变透明、lang 里的 pride 名称中性化、
-  IE 着色器名称/说明中性化、以及原版 splash 列表。
+**内容过滤**（全部在模组内部，换实例不用另外放资源包/数据包）：
+- 资源层：`ResourceManagerFilterMixin` 在 `MultiPackResourceManager` 返回资源之后按规则改写——
+  Malum prideweave 的配方/进度替换成不可达占位、pride 贴图替换成 1x1 透明、Malum/IE/Mekanism 语言文件
+  里的 pride 条目改成中性文本、主菜单 splash 按行过滤宣传句。与模组之间资源包顺序无关。
+- Quark：彩虹 Q 按钮由 `QuarkQButtonMixin` 固定前景色；13 种 LGBT 蜜蜂每 20 tick 用反射把
+  `enableLGBTBees / everyBeeIsLGBT` 压回 false（配置界面改回来也会被压回去）。
+- 规则集中在 `compat/content/ContentFilterRules`，一行一条，路径正则 + 处理类型。
 
 ## 结构
 
@@ -90,3 +91,5 @@ $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.21.9-hotspot'
 ## 备注
 
 `todo.md`（本地待办）已在 `.gitignore` 里排除，不入库；`notes/` 是本机分析笔记，同样不入库。
+
+

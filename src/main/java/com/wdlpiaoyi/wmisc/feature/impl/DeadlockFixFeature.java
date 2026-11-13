@@ -15,9 +15,10 @@ import java.util.Set;
  * <p>锁环：iceandfire 的构造线程持有 {@code IafBlocks} 的类初始化锁等待 {@code IafItems}；
  * l2weaponry 的构造线程持有 {@code IafItems} 的类初始化锁等待 {@code IafBlocks}。</p>
  *
- * <p>实现：{@code IceAndFireConstructMixin} / {@code L2WeaponryConstructMixin} 分别注入两个 mod
- * 主类的构造函数 HEAD/RETURN，共用一把锁，保证两者不同时进入构造阶段；其余模组照常并行。
- * 不用 {@code FMLModContainer} 作为注入点：它在 ModLauncher 启动层，Mixin 覆盖不到（已实测）。</p>
+ * <p>实现：{@code IceAndFireInitMixin} 注入 {@code IceAndFire.init()}、{@code L2WeaponryItemsMixin}
+ * 注入 {@code LWItems.register()}，两处共用一把锁，保证危险区不同时进入；其余模组照常并行。
+ * 不用 {@code FMLModContainer} 作为注入点：它在 ModLauncher 启动层，Mixin 覆盖不到（已实测）；
+ * 也不用构造函数：Mixin 0.8.5 对构造函数只允许 TAIL 注入（已实测）。</p>
  */
 public final class DeadlockFixFeature implements WmiscFeature {
     @Override
@@ -27,7 +28,7 @@ public final class DeadlockFixFeature implements WmiscFeature {
 
     @Override
     public String summary() {
-        return "串行化 iceandfire 与 l2weaponry 的构造阶段，消除类初始化锁环";
+        return "串行化 iceandfire 与 l2weaponry 的初始化入口，消除类初始化锁环";
     }
 
     @Override

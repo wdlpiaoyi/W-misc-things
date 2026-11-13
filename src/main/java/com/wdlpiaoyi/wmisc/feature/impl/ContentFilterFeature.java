@@ -1,28 +1,39 @@
 package com.wdlpiaoyi.wmisc.feature.impl;
 
 import com.wdlpiaoyi.wmisc.Wmisc;
+import com.wdlpiaoyi.wmisc.compat.Compat;
+import com.wdlpiaoyi.wmisc.compat.content.ContentFilterRules;
 import com.wdlpiaoyi.wmisc.feature.WmiscFeature;
-import net.minecraftforge.common.ForgeConfigSpec;
+import com.wdlpiaoyi.wmisc.util.ConfigPeek;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.common.MinecraftForge;
+
+import java.lang.reflect.Field;
 
 /**
- * 内容过滤：屏蔽模组里与玩法无关的政治宣传内容（目前针对整合包里确认存在的几处）。
+ * 内容过滤：屏蔽模组注入的政治宣传内容（目前整合包里确认存在的几处）。
  *
- * <p>分层实现，能改的尽量用数据/资源层，不硬改别人的 jar：</p>
+ * <p>全部改动都在模组内部完成，换实例、换整合包不需要再往实例里放资源包/数据包：</p>
  * <ol>
- *   <li><b>Malum 的 prideweave</b>：本模组自带同名 recipe / advancement 覆盖文件，
- *       用 {@code forge:false} 条件让它们全部失效（不可合成、不显示解锁提示）。
- *       物品本体仍存在（代码注册，删物品风险太高）。</li>
- *   <li><b>主菜单 splash</b>：本模组提供原版 {@code splashes.txt}，去掉第三方模组追加的宣传句。</li>
- *   <li><b>Quark 彩虹 Q 按钮</b>：{@link com.wdlpiaoyi.wmisc.mixin.QuarkQButtonMixin} 固定前景色。</li>
- *   <li><b>其余（Mekanism robit 皮肤、IE 着色器名称、Malum 贴图/名称、Quark LGBT 蜜蜂/日期提示）</b>：
- *       这些要改 JSON/贴图/语言文件，跨模组资源包顺序不可控，改为在实例侧用
- *       {@code moonlight-global-datapacks} 的 filter 数据包 + 资源包处理；
- *       详见 README 的“内容过滤”一节。</li>
+ *   <li>配方 / 进度 / 语言 / 贴图 / splash 在 {@code MultiPackResourceManager} 返回资源之后
+ *       按规则改写（见 {@link ContentFilterRules}），与模组之间资源包顺序无关；</li>
+ *   <li>Quark 的彩虹 Q 按钮：{@code QuarkQButtonMixin} 固定前景色；</li>
+ *   <li>Quark 的 13 种 LGBT 蜜蜂：客户端每 20 tick 把
+ *       {@code VariantAnimalTexturesModule.enableLGBTBees / everyBeeIsLGBT} 置回 false，
+ *       防止它自己的配置或界面把开关改回来。</li>
  * </ol>
  *
- * <p>开关只控制启动日志与自检；随包提供的资源/数据文件是静态的，无法在运行时单独关掉单个文件。</p>
+ * <p>规则覆盖：Malum 的 prideweave（配方/进度/贴图/名称）、ImmersiveEngineering 着色器名称说明、
+ * Mekanism robit 皮肤名称、原版 splash 中的宣传句。</p>
  */
 public final class ContentFilterFeature implements WmiscFeature {
+    private static final String QUARK_MODULE = "org.violetmoon.quark.content.client.module.VariantAnimalTexturesModule";
+
+    private static volatile boolean active;
+    private static boolean quarkFlagsForced;
+    private static int clientTicks;
+
     @Override
     public String id() {
         return "content_filter";
@@ -30,7 +41,7 @@ public final class ContentFilterFeature implements WmiscFeature {
 
     @Override
     public String summary() {
-        return "屏蔽模组注入的政治宣传内容（Malum prideweave、splash、Quark 彩虹按钮等）";
+        return "屏蔽模组注入的政治宣传内容（Malum / IE / Mekanism / Quark / splash）";
     }
 
     @Override
@@ -39,10 +50,64 @@ public final class ContentFilterFeature implements WmiscFeature {
     }
 
     @Override
+    public void onConstruct() {
+        // 客户端资源（语言/贴图/splash）在 common setup 之前就可能被读，所以构造期就置位。
+        // 此时 Forge 配置还没加载，直接读配置文件。
+        boolean enabled = ConfigPeek.getBoolean("features.content_filter", "enabled", true);
+        active = enabled;
+        ContentFilterRules.setActive(enabled);
+    }
+
+    @Override
     public void onCommonSetup() {
-        boolean malum = com.wdlpiaoyi.wmisc.compat.Compat.isModLoaded("malum");
-        boolean quark = com.wdlpiaoyi.wmisc.compat.Compat.isModLoaded("quark");
-        Wmisc.LOG.info("[w_misc] 内容过滤已启用（Malum 覆盖：{}，Quark 按钮：{}）",
-                malum ? "已随包提供" : "未安装 Malum", quark ? "已生效" : "未安装 Quark");
+        active = true;
+        ContentFilterRules.setActive(true);
+        Wmisc.LOG.info("[w_misc] 内容过滤已启用：{} 条资源规则（与资源包顺序无关）", ContentFilterRules.ruleCount());
+    }
+
+    @Override
+    public void onClientSetup() {
+        forceQuarkBeeFlags();
+        MinecraftForge.EVENT_BUS.addListener(this::onClientTick);
+    }
+
+    public static boolean isActive() {
+        return active;
+    }
+
+    private void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        if (++clientTicks % 20 != 0) {
+            return;
+        }
+        forceQuarkBeeFlags();
+    }
+
+    /** Quark 把这两个开关做成 public static 字段，直接反射置 false；配置界面改回来也会被压回去。 */
+    private static void forceQuarkBeeFlags() {
+        if (!Compat.isModLoaded("quark")) {
+            return;
+        }
+        try {
+            Class<?> module = Class.forName(QUARK_MODULE);
+            Field lgbt = module.getField("enableLGBTBees");
+            Field every = module.getField("everyBeeIsLGBT");
+            boolean changed = lgbt.getBoolean(null) || every.getBoolean(null);
+            lgbt.setBoolean(null, false);
+            every.setBoolean(null, false);
+            if (!quarkFlagsForced) {
+                quarkFlagsForced = true;
+                Wmisc.LOG.info("[w_misc] 已关闭 Quark 的 LGBT 蜜蜂变体（enableLGBTBees=false）");
+            } else if (changed) {
+                Wmisc.LOG.debug("[w_misc] Quark 的 LGBT 蜜蜂开关被改回 true，已重新关闭");
+            }
+        } catch (Throwable t) {
+            if (!quarkFlagsForced) {
+                quarkFlagsForced = true;
+                Wmisc.LOG.warn("[w_misc] 无法关闭 Quark 的 LGBT 蜜蜂开关：{}", t.toString());
+            }
+        }
     }
 }
