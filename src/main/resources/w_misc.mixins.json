@@ -12,7 +12,8 @@
     "MixinSuperpositionHandlerWorthy",
     "ResourceManagerFilterMixin",
     "MalumPrideItemRemovalMixin",
-    "MalumPrideArmorSkinMixin"
+    "MalumPrideArmorSkinMixin",
+    "ImmersiveEngineeringShaderMixin"
   ],
   "client": [
     "QuarkQButtonMixin"

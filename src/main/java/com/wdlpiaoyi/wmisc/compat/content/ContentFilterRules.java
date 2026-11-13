@@ -19,22 +19,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 /**
  * 内容过滤规则与资源改写。
  *
- * <p>不依赖资源包顺序：在资源管理器返回资源之后、上层解析之前改写内容。这样无论目标模组的包在
+ * <p>不依赖资源包顺序：在资源管理器返回资源之后、上层解析之前处理。这样无论目标模组的包在
  * 我们上面还是下面都生效，换实例时只要装本模组即可，不需要往实例里放资源包/数据包。</p>
  *
- * <p>能做的改写：</p>
+ * <p>处理方式：</p>
  * <ul>
- *   <li>配方 / 进度：替换成永不满足条件的占位（Forge {@code forge:false} / 不可达进度）；</li>
- *   <li>语言文件：整个 JSON 解析后按 key 正则把内容换成中性文本，其它 key 原样保留；</li>
+ *   <li>{@link Kind#REMOVE}：整条资源删掉（配方不进 RecipeManager、数据包注册表里不存在）；</li>
+ *   <li>语言文件：按 key / value 正则把内容换成中性文本，其它 key 原样保留；</li>
  *   <li>贴图：替换成 1x1 透明 PNG；</li>
- *   <li>主菜单 splash：按行过滤掉带宣传关键词的行，其余行保留
- *       （不像整文件覆盖那样把原版行弄丢）。</li>
+ *   <li>主菜单 splash：按行过滤掉带宣传关键词的行，其余行保留。</li>
  * </ul>
+ *
+ * <p>此外 Malum 的 pride 物品在注册阶段就被跳过（见 {@code MalumPrideItemRemovalMixin}），
+ * IE 的 6 个 pride 着色器在注册后被摘除（见 {@code ImmersiveEngineeringShaderMixin}）。</p>
  */
 public final class ContentFilterRules {
     private static final Logger LOG = LoggerFactory.getLogger("w_misc/content_filter");
@@ -43,46 +47,60 @@ public final class ContentFilterRules {
     private static final byte[] TRANSPARENT_PNG = Base64.getDecoder().decode(
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
 
-    private static final byte[] DISABLED_RECIPE = """
-            {"type":"minecraft:crafting_shaped","conditions":[{"type":"forge:false"}]}
-            """.trim().getBytes(StandardCharsets.UTF_8);
-
-    private static final byte[] DISABLED_ADVANCEMENT = """
-            {"criteria":{"w_misc_blocked":{"trigger":"minecraft:impossible"}}}
-            """.trim().getBytes(StandardCharsets.UTF_8);
-
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
-    private static final Pattern SPLASH_BANNED = Pattern.compile(
-            "(?i).*\\b(gay|gays|trans|transgender|pride|prideful|lgbt|lgbtq|queer|lesbian|bisexual|nonbinary|enby)\\b.*");
-
     public enum Kind {
-        RECIPE_DISABLE,
-        ADVANCEMENT_DISABLE,
+        /** 直接把资源从加载列表里删掉。 */
+        REMOVE,
         TEXTURE_TRANSPARENT,
         LANG_NEUTRALIZE,
         SPLASH_FILTER
     }
 
-    public record Rule(Pattern path, Kind kind, Pattern keyPattern, String replacement) {
+    /** keyPattern / valuePattern 任一命中就把这条语言条目换成 replacement。 */
+    public record Rule(Pattern path, Kind kind, Pattern keyPattern, Pattern valuePattern, String replacement) {
     }
 
+    private static final Pattern PRIDE_WORDS = Pattern.compile(
+            "(?i).*\\b(gay|gays|trans|transgender|pride|prideful|lgbt|lgbtq|queer|lesbian|bisexual|nonbinary|non-binary|enby|asexual|asexuality|intersex|pansexual|pan awareness|coming out)\\b.*");
+
+    private static final Pattern MALUM_BLOCKED_ITEM = Pattern.compile("(?i).*pride.*");
+
+    private static final Pattern MEKANISM_PRIDE_SKIN = Pattern.compile(
+            "(?i)(ace|agender|aro|bi|enby|gay|genderfluid|lesbian|pan|pride|trans)");
+
+    /** IE 的 6 个 pride 着色器 id。 */
+    private static final Set<String> IE_PRIDE_SHADERS =
+            Set.of("acepride", "bipride", "enbypride", "gaypride", "lesbianpride", "transpride");
+
     private static final List<Rule> RULES = List.of(
-            rule("^malum:recipes/.*prideweave\\.json$", Kind.RECIPE_DISABLE),
-            rule("^malum:advancements/.*prideweave\\.json$", Kind.ADVANCEMENT_DISABLE),
+            // Malum：配方 / 进度整条删除；贴图透明；名称中性
+            rule("^malum:recipes/.*prideweave\\.json$", Kind.REMOVE),
+            rule("^malum:advancements/.*prideweave.*\\.json$", Kind.REMOVE),
             rule("^malum:textures/.*pride.*\\.png$", Kind.TEXTURE_TRANSPARENT),
-            rule("^malum:lang/(en_us|zh_cn)\\.json$", Kind.LANG_NEUTRALIZE, "(?i).*pride.*", "织物"),
-            rule("^immersiveengineering:lang/(en_us|zh_cn)\\.json$", Kind.LANG_NEUTRALIZE, "(?i).*pride.*", "自定义着色器"),
-            rule("^mekanism:lang/(en_us|zh_cn)\\.json$", Kind.LANG_NEUTRALIZE, "(?i)^robit_skin\\.mekanism\\.", "Robit 皮肤"),
+            lang("^malum:lang/(en_us|zh_cn)\\.json$", "(?i).*pride.*", "织物"),
+
+            // Mekanism：11 个 pride robit 皮肤的数据文件整条删除，名称中性
+            rule("^mekanism:mekanism/robit_skin/(ace|agender|aro|bi|enby|gay|genderfluid|lesbian|pan|pride|trans)\\.json$",
+                    Kind.REMOVE),
+            lang("^mekanism:lang/(en_us|zh_cn)\\.json$",
+                    "(?i)^robit_skin\\.mekanism\\.(ace|agender|aro|bi|enby|gay|genderfluid|lesbian|pan|pride|trans)$",
+                    "Robit 皮肤"),
+
+            // Immersive Engineering：着色器名称 / 说明中性（着色器本体在注册后由 mixin 摘除）
+            lang("^immersiveengineering:lang/(en_us|zh_cn)\\.json$", "(?i).*pride.*", "自定义着色器"),
+
+            // Quark：节日提示里带宣传关键词的条目中性化；彩虹相关隐藏进度整条删除
+            lang("^quark:lang/(en_us|zh_cn)\\.json$", "(?i)^quark\\.gui\\.celebration\\.", PRIDE_WORDS, "Quark"),
+            lang("^quark:lang/(en_us|zh_cn)\\.json$", "(?i)^advancements\\.quark\\.wear_full_rainbow\\.", ""),
+            rule("^quark:advancements/wear_full_rainbow\\.json$", Kind.REMOVE),
+
+            // 原版主菜单 splash：逐行过滤
             rule("^minecraft:texts/splashes\\.txt$", Kind.SPLASH_FILTER)
     );
 
     private static final Map<String, Integer> HITS = new HashMap<>();
-
-    /** Malum 里带 pride 的物品名（prideweave 和 pride 服饰）。这些会被直接从注册表里跳过。 */
-    private static final Pattern MALUM_BLOCKED_ITEM = Pattern.compile("(?i).*pride.*");
-
-    private static final java.util.concurrent.atomic.AtomicInteger SKIPPED_ITEMS = new java.util.concurrent.atomic.AtomicInteger();
+    private static final AtomicInteger SKIPPED_ITEMS = new AtomicInteger();
 
     /** 由 ContentFilterFeature 在配置加载后置位；未启用时所有规则都不生效。 */
     private static volatile boolean active;
@@ -98,44 +116,24 @@ public final class ContentFilterRules {
         return active;
     }
 
-    /** Malum 注册时是否要跳过这个物品名（直接从注册表消失，而不是只屏蔽配方）。 */
-    public static boolean isBlockedMalumItemName(String name) {
-        if (!active || name == null) {
-            return false;
-        }
-        return MALUM_BLOCKED_ITEM.matcher(name).matches();
-    }
-
-    /** 记录一个被跳过的注册项（用于启动日志/自检）。 */
-    public static void noteSkippedItem(String name) {
-        int count = SKIPPED_ITEMS.incrementAndGet();
-        if (count == 1) {
-            LOG.info("[w_misc] 已从 Malum 注册表跳过宣传物品（首个：{}）", name);
-        }
-    }
-
-    public static int skippedItemCount() {
-        return SKIPPED_ITEMS.get();
-    }
-
     private static Rule rule(String path, Kind kind) {
-        return new Rule(Pattern.compile(path), kind, null, null);
+        return new Rule(Pattern.compile(path), kind, null, null, null);
     }
 
-    private static Rule rule(String path, Kind kind, String keyPattern, String replacement) {
-        return new Rule(Pattern.compile(path), kind, Pattern.compile(keyPattern), replacement);
+    private static Rule lang(String path, String keyPattern, String replacement) {
+        return new Rule(Pattern.compile(path), Kind.LANG_NEUTRALIZE,
+                Pattern.compile(keyPattern), null, replacement);
     }
 
-    private static volatile boolean firstQueryLogged;
+    private static Rule lang(String path, String keyPattern, Pattern valuePattern, String replacement) {
+        return new Rule(Pattern.compile(path), Kind.LANG_NEUTRALIZE,
+                Pattern.compile(keyPattern), valuePattern, replacement);
+    }
 
-    /** 这个资源是否需要过滤；不需要返回 null。 */
+    /** 这个资源是否需要处理；不需要返回 null。 */
     public static Rule match(ResourceLocation id) {
         if (!active) {
             return null;
-        }
-        if (!firstQueryLogged) {
-            firstQueryLogged = true;
-            LOG.info("[w_misc] 资源过滤器已接管（首次查询：{}）", id);
         }
         String key = id.getNamespace() + ":" + id.getPath();
         for (Rule rule : RULES) {
@@ -144,6 +142,11 @@ public final class ContentFilterRules {
             }
         }
         return null;
+    }
+
+    /** 这个规则是否表示「整条资源删除」而不是改写内容。 */
+    public static boolean isRemoval(Rule rule) {
+        return rule != null && rule.kind() == Kind.REMOVE;
     }
 
     /** 对单个资源执行改写；不需要改写或失败时返回 empty。 */
@@ -170,11 +173,16 @@ public final class ContentFilterRules {
             if (rule == null) {
                 continue;
             }
+            if (out == null) {
+                out = new HashMap<>(resources);
+            }
+            if (isRemoval(rule)) {
+                out.remove(entry.getKey());
+                note(rule);
+                continue;
+            }
             Optional<Resource> replaced = rewrite(entry.getValue(), rule);
             if (replaced.isPresent()) {
-                if (out == null) {
-                    out = new HashMap<>(resources);
-                }
                 out.put(entry.getKey(), replaced.get());
             }
         }
@@ -183,16 +191,15 @@ public final class ContentFilterRules {
 
     private static byte[] transform(Rule rule, byte[] data) {
         return switch (rule.kind()) {
-            case RECIPE_DISABLE -> DISABLED_RECIPE.clone();
-            case ADVANCEMENT_DISABLE -> DISABLED_ADVANCEMENT.clone();
+            case REMOVE -> null;
             case TEXTURE_TRANSPARENT -> TRANSPARENT_PNG.clone();
-            case LANG_NEUTRALIZE -> neutralizeLang(data, rule.keyPattern(), rule.replacement());
+            case LANG_NEUTRALIZE -> neutralizeLang(data, rule.keyPattern(), rule.valuePattern(), rule.replacement());
             case SPLASH_FILTER -> filterSplashes(data);
         };
     }
 
-    private static byte[] neutralizeLang(byte[] data, Pattern keyPattern, String replacement) {
-        if (keyPattern == null) {
+    private static byte[] neutralizeLang(byte[] data, Pattern keyPattern, Pattern valuePattern, String replacement) {
+        if (keyPattern == null && valuePattern == null) {
             return null;
         }
         try {
@@ -203,7 +210,12 @@ public final class ContentFilterRules {
             JsonObject object = parsed.getAsJsonObject();
             boolean changed = false;
             for (String key : new ArrayList<>(object.keySet())) {
-                if (keyPattern.matcher(key).matches()) {
+                JsonElement value = object.get(key);
+                boolean hit = keyPattern != null && keyPattern.matcher(key).matches();
+                if (!hit && valuePattern != null && value != null && value.isJsonPrimitive()) {
+                    hit = valuePattern.matcher(value.getAsString()).matches();
+                }
+                if (hit) {
                     object.addProperty(key, replacement);
                     changed = true;
                 }
@@ -219,7 +231,7 @@ public final class ContentFilterRules {
         List<String> kept = new ArrayList<>();
         boolean changed = false;
         for (String line : text.split("\r?\n", -1)) {
-            if (!line.isBlank() && SPLASH_BANNED.matcher(line).matches()) {
+            if (!line.isBlank() && PRIDE_WORDS.matcher(line).matches()) {
                 changed = true;
                 continue;
             }
@@ -228,9 +240,31 @@ public final class ContentFilterRules {
         return changed ? String.join("\n", kept).getBytes(StandardCharsets.UTF_8) : null;
     }
 
+    /** Malum 注册时是否要跳过这个物品名（直接从注册表消失，而不是只屏蔽配方）。 */
+    public static boolean isBlockedMalumItemName(String name) {
+        return active && name != null && MALUM_BLOCKED_ITEM.matcher(name).matches();
+    }
+
+    /** IE 注册后要摘除的 pride 着色器 id。 */
+    public static boolean isBlockedIeShader(String path) {
+        return active && path != null && IE_PRIDE_SHADERS.contains(path.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /** 记录一个被跳过的注册项（用于启动日志/自检）。 */
+    public static void noteSkippedItem(String name) {
+        int count = SKIPPED_ITEMS.incrementAndGet();
+        if (count == 1) {
+            LOG.info("[w_misc] 已从 Malum 注册表跳过宣传物品（首个：{}）", name);
+        }
+    }
+
+    public static int skippedItemCount() {
+        return SKIPPED_ITEMS.get();
+    }
+
     /** 每种规则第一次命中时打一条日志，避免刷屏。 */
     private static void note(Rule rule) {
-        if (HITS.putIfAbsent(rule.kind().name(), 1) == null) {
+        if (HITS.putIfAbsent(rule.kind().name() + "|" + rule.path().pattern(), 1) == null) {
             LOG.info("[w_misc] 内容过滤命中：{}（规则 {}）", rule.kind(), rule.path().pattern());
         }
     }

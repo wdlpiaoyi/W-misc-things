@@ -28,7 +28,8 @@ public final class WmiscMixinPlugin implements IMixinConfigPlugin {
             "MixinSuperpositionHandlerWorthy", List.of("enigmaticlegacy"),
             "QuarkQButtonMixin", List.of("quark"),
             "MalumPrideItemRemovalMixin", List.of("malum"),
-            "MalumPrideArmorSkinMixin", List.of("malum")
+            "MalumPrideArmorSkinMixin", List.of("malum"),
+            "ImmersiveEngineeringShaderMixin", List.of("immersiveengineering")
     );
 
     @Override

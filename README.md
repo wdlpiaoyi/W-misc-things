@@ -46,10 +46,14 @@ HEAD 取同一把共享锁、RETURN 释放。
 **内容过滤**（全部在模组内部，换实例不用另外放资源包/数据包）：
 - 注册层：Malum 的 18 个 prideweave **直接不注册**（`MalumPrideItemRemovalMixin` 拦在
   `ItemRegistry.register`，返回 air 的 RegistryObject；引用它们的 `ArmorSkinRegistry.registerPridewear`
-  由 `MalumPrideArmorSkinMixin` 跳过）→ JEI/创造栏/`/give` 里都不存在。
-- 资源层：`ResourceManagerFilterMixin` 在 `MultiPackResourceManager` 返回资源之后按规则改写——
-  Malum prideweave 的配方/进度替换成不可达占位、pride 贴图替换成 1x1 透明、Malum/IE/Mekanism 语言文件
-  里的 pride 条目改成中性文本、主菜单 splash 按行过滤宣传句。与模组之间资源包顺序无关。
+  由 `MalumPrideArmorSkinMixin` 跳过）→ JEI/创造栏/`/give` 里都不存在；
+  Immersive Engineering 的 6 个 pride 着色器在 `IEShaders.commonConstruction()` 之后从
+  `ShaderRegistry` / 战利品列表摘除（`ImmersiveEngineeringShaderMixin`）。
+- 资源层：`ResourceManagerFilterMixin` 在 `MultiPackResourceManager` 返回资源之后按规则**删除或改写**——
+  Malum 的 prideweave 配方/进度、Mekanism 的 11 个 pride robit 皮肤数据整条删除（不会进入注册表）；
+  pride 贴图替换成 1x1 透明；Malum/IE/Mekanism/Quark 语言里的 pride 条目改成中性文本；
+  Quark 的彩虹隐藏进度删除；主菜单 splash 按行过滤宣传句。与模组之间资源包顺序无关。
+- Quark 的 13 种 LGBT 蜜蜂：每 20 tick 把 `enableLGBTBees / everyBeeIsLGBT` 压回 false。
 - Quark：彩虹 Q 按钮由 `QuarkQButtonMixin` 固定前景色；13 种 LGBT 蜜蜂每 20 tick 用反射把
   `enableLGBTBees / everyBeeIsLGBT` 压回 false（配置界面改回来也会被压回去）。
 - 规则集中在 `compat/content/ContentFilterRules`，一行一条，路径正则 + 处理类型。
