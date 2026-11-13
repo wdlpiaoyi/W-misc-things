@@ -10,7 +10,9 @@
     "L2WeaponryItemsMixin",
     "ApollyonConfiscateSnapshotMixin",
     "MixinSuperpositionHandlerWorthy",
-    "ResourceManagerFilterMixin"
+    "ResourceManagerFilterMixin",
+    "MalumPrideItemRemovalMixin",
+    "MalumPrideArmorSkinMixin"
   ],
   "client": [
     "QuarkQButtonMixin"

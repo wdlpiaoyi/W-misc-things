@@ -44,6 +44,9 @@ HEAD 取同一把共享锁、RETURN 释放。
 与附属 EnigmaticAddons 的同点 RETURN 注入叠加安全，不伪造计数（不影响 BlessRing 等级）。
 
 **内容过滤**（全部在模组内部，换实例不用另外放资源包/数据包）：
+- 注册层：Malum 的 18 个 prideweave **直接不注册**（`MalumPrideItemRemovalMixin` 拦在
+  `ItemRegistry.register`，返回 air 的 RegistryObject；引用它们的 `ArmorSkinRegistry.registerPridewear`
+  由 `MalumPrideArmorSkinMixin` 跳过）→ JEI/创造栏/`/give` 里都不存在。
 - 资源层：`ResourceManagerFilterMixin` 在 `MultiPackResourceManager` 返回资源之后按规则改写——
   Malum prideweave 的配方/进度替换成不可达占位、pride 贴图替换成 1x1 透明、Malum/IE/Mekanism 语言文件
   里的 pride 条目改成中性文本、主菜单 splash 按行过滤宣传句。与模组之间资源包顺序无关。

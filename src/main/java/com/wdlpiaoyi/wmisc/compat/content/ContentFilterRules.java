@@ -79,6 +79,11 @@ public final class ContentFilterRules {
 
     private static final Map<String, Integer> HITS = new HashMap<>();
 
+    /** Malum 里带 pride 的物品名（prideweave 和 pride 服饰）。这些会被直接从注册表里跳过。 */
+    private static final Pattern MALUM_BLOCKED_ITEM = Pattern.compile("(?i).*pride.*");
+
+    private static final java.util.concurrent.atomic.AtomicInteger SKIPPED_ITEMS = new java.util.concurrent.atomic.AtomicInteger();
+
     /** 由 ContentFilterFeature 在配置加载后置位；未启用时所有规则都不生效。 */
     private static volatile boolean active;
 
@@ -91,6 +96,26 @@ public final class ContentFilterRules {
 
     public static boolean isActive() {
         return active;
+    }
+
+    /** Malum 注册时是否要跳过这个物品名（直接从注册表消失，而不是只屏蔽配方）。 */
+    public static boolean isBlockedMalumItemName(String name) {
+        if (!active || name == null) {
+            return false;
+        }
+        return MALUM_BLOCKED_ITEM.matcher(name).matches();
+    }
+
+    /** 记录一个被跳过的注册项（用于启动日志/自检）。 */
+    public static void noteSkippedItem(String name) {
+        int count = SKIPPED_ITEMS.incrementAndGet();
+        if (count == 1) {
+            LOG.info("[w_misc] 已从 Malum 注册表跳过宣传物品（首个：{}）", name);
+        }
+    }
+
+    public static int skippedItemCount() {
+        return SKIPPED_ITEMS.get();
     }
 
     private static Rule rule(String path, Kind kind) {

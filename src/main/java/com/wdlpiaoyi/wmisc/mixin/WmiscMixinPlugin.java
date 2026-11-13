@@ -26,7 +26,9 @@ public final class WmiscMixinPlugin implements IMixinConfigPlugin {
             "L2WeaponryItemsMixin", List.of("l2weaponry"),
             "ApollyonConfiscateSnapshotMixin", List.of("revelationfix"),
             "MixinSuperpositionHandlerWorthy", List.of("enigmaticlegacy"),
-            "QuarkQButtonMixin", List.of("quark")
+            "QuarkQButtonMixin", List.of("quark"),
+            "MalumPrideItemRemovalMixin", List.of("malum"),
+            "MalumPrideArmorSkinMixin", List.of("malum")
     );
 
     @Override
@@ -70,3 +72,4 @@ public final class WmiscMixinPlugin implements IMixinConfigPlugin {
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
     }
 }
+

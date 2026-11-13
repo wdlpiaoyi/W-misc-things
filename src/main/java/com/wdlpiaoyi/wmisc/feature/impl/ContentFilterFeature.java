@@ -62,7 +62,8 @@ public final class ContentFilterFeature implements WmiscFeature {
     public void onCommonSetup() {
         active = true;
         ContentFilterRules.setActive(true);
-        Wmisc.LOG.info("[w_misc] 内容过滤已启用：{} 条资源规则（与资源包顺序无关）", ContentFilterRules.ruleCount());
+        Wmisc.LOG.info("[w_misc] 内容过滤已启用：{} 条资源规则（与资源包顺序无关）；Malum 已跳过 {} 个宣传物品",
+                ContentFilterRules.ruleCount(), ContentFilterRules.skippedItemCount());
     }
 
     @Override
@@ -111,3 +112,4 @@ public final class ContentFilterFeature implements WmiscFeature {
         }
     }
 }
+
