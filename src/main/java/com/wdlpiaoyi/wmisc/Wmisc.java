@@ -25,7 +25,7 @@ public final class Wmisc {
     public Wmisc(FMLJavaModLoadingContext context) {
         // 先登记模块，配置构建时才知道要生成哪些 [features.<id>] 段。
         Features.init();
-        WmiscConfig.register();
+        WmiscConfig.register(context);
 
         IEventBus modBus = context.getModEventBus();
         modBus.addListener(this::onCommonSetup);
@@ -46,3 +46,4 @@ public final class Wmisc {
         event.enqueueWork(FeatureRegistry::clientSetupAll);
     }
 }
+

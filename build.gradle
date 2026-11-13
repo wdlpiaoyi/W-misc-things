@@ -58,6 +58,11 @@ repositories {
         name = 'jitpack'
         url = 'https://jitpack.io'
     }
+    // Curios 官方 maven（饰品槽位 API）
+    maven {
+        name = 'curios'
+        url = 'https://maven.theillusivec4.top/'
+    }
 }
 
 // Mixin 注解处理器要求 targets 里的类在编译期能找到。死锁修复注入的是第三方 mod 的类，
@@ -75,6 +80,9 @@ dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
     compileOnly sourceSets.stubs.output
+
+    // Curios：Apollyon 饰品归还用到槽位 API。只在编译期需要，运行时由玩家环境提供。
+    compileOnly fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
 }
 
 mixin {

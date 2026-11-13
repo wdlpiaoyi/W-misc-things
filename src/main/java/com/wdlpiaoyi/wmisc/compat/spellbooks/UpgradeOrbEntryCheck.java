@@ -19,10 +19,10 @@ public final class UpgradeOrbEntryCheck {
     private static final Logger LOG = LoggerFactory.getLogger("w_misc/spellbooks");
 
     private static final ResourceKey<Registry<Object>> REGISTRY_KEY =
-            ResourceKey.createRegistryKey(new ResourceLocation("irons_spellbooks", "upgrade_orb_type"));
+            ResourceKey.createRegistryKey(new ResourceLocation("irons_spellbooks:upgrade_orb_type"));
 
     private static final ResourceKey<Object> ENTRY_KEY =
-            ResourceKey.create(REGISTRY_KEY, new ResourceLocation("fantasy_ending", "fantasy_power"));
+            ResourceKey.create(REGISTRY_KEY, new ResourceLocation("fantasy_ending:fantasy_power"));
 
     private UpgradeOrbEntryCheck() {
     }
@@ -47,3 +47,4 @@ public final class UpgradeOrbEntryCheck {
         }
     }
 }
+

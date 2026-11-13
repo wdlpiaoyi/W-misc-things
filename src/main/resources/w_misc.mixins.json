@@ -7,9 +7,13 @@
   "refmap": "mixins.w_misc.refmap.json",
   "mixins": [
     "IceAndFireConstructMixin",
-    "L2WeaponryConstructMixin"
+    "L2WeaponryConstructMixin",
+    "ApollyonConfiscateSnapshotMixin",
+    "MixinSuperpositionHandlerWorthy"
   ],
-  "client": [],
+  "client": [
+    "QuarkQButtonMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

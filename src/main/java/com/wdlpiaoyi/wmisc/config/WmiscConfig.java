@@ -4,8 +4,8 @@ import com.wdlpiaoyi.wmisc.feature.FeatureRegistry;
 import com.wdlpiaoyi.wmisc.feature.Features;
 import com.wdlpiaoyi.wmisc.feature.WmiscFeature;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 /**
  * 模组配置。
@@ -51,7 +51,8 @@ public final class WmiscConfig {
         SPEC = builder.build();
     }
 
-    public static void register() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, SPEC, "w_misc-common.toml");
+    public static void register(FMLJavaModLoadingContext context) {
+        context.registerConfig(ModConfig.Type.COMMON, SPEC, "w_misc-common.toml");
     }
 }
+

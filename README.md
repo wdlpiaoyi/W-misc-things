@@ -9,30 +9,46 @@ Minecraft **1.20.1** / **Forge 47.x** 的杂项复合模组：若干互相独立
 
 ## 功能模块
 
-| 模块 id | 作用 | 前置 |
-|---|---|---|
-| `deadlock_fix` | 串行化 `iceandfire` 与 `l2weaponry` 的构造阶段，消除 JVM 类初始化锁环（启动假死） | iceandfire、l2weaponry |
-| `fantasy_ending_upgrade_orb` | 补 `fantasy_ending:fantasy_power` 的 `upgrade_orb_type` 数据条目 | irons_spellbooks、fantasy_ending |
-| `chloride_jei_bundle` | 并入 chloride 1.8.1 / JEI 15.70+ 兼容补丁（替代独立 jar） | chloride、jei |
-| `goety_apollyon_curio_return` | Apollyon 战后饰品按原槽位一键归还 | goety_revelation、curios |
-| `enigmatic_legacy_creative` | 创造模式下忽略七咒之戒的佩戴时长条件 | enigmatic legacy（+ addons） |
-| `content_filter` | 按配置规则过滤模组注入的内容 | — |
+| 模块 id | 作用 | 前置 | 状态 |
+|---|---|---|---|
+| `deadlock_fix` | 串行化 `iceandfire` 与 `l2weaponry` 的构造阶段，消除 JVM 类初始化锁环（启动假死） | iceandfire、l2weaponry | 已实测生效 |
+| `fantasy_ending_upgrade_orb` | 补 `fantasy_ending:fantasy_power` 的 `upgrade_orb_type` 数据条目 | irons_spellbooks、fantasy_ending | 已随包提供 |
+| `chloride_jei_bundle` | 并入 chloride 1.8.1 / JEI 15.70+ 兼容补丁（替代独立 jar） | chloride、jei | 已实测生效 |
+| `goety_apollyon_curio_return` | Apollyon 战后水晶把饰品按原槽位装回，而不是一件件掉到脚下 | revelationfix、curios | 待实机战斗验证 |
+| `enigmatic_legacy_creative` | 创造模式下无视七咒之戒的佩戴时长条件 | enigmaticlegacy（含 addons） | 待实机验证 |
+| `content_filter` | 屏蔽模组注入的政治宣传内容 | — | 部分随包 + 实例侧数据/资源 |
 
-启动日志会打印一张模块状态表（启用 / 配置停用 / 缺少前置 / 实现待补），并自检修复是否真的生效。
+启动日志会打印模块状态表，并自检修复是否真的生效（例如死锁修复会确认两个模组的构造入口都被接管）。
 
-## 几个实现要点
+## 各处实现要点
 
-**死锁修复**：注入的是两个 mod 的**主类构造函数**（`com.iafenvoy.iceandfire.forge.IceAndFireForge`、
-`dev.xkmc.l2weaponry.init.L2Weaponry`），HEAD 取同一把共享锁、RETURN 释放。
-不能注入 `FMLModContainer#constructMod`：那个类在 ModLauncher 启动层，Mixin 只处理游戏层，已实测不生效。
+**死锁修复**：注入两个 mod **主类构造函数**（`com.iafenvoy.iceandfire.forge.IceAndFireForge`、
+`dev.xkmc.l2weaponry.init.L2Weaponry`）：在 super() 之后取同一把共享锁、TAIL 释放。
+不能用 `FMLModContainer#constructMod`（ModLauncher 启动层，Mixin 覆盖不到，已实测），
+也不能用 `@At("HEAD")`（构造函数 super() 之前注入会被 Mixin 拒绝，已实测）。
 
 **fantasy_ending 数据补丁**：纯资源，`data/fantasy_ending/irons_spellbooks/upgrade_orb_type/fantasy_power.json`，
 值取自 fantasy_ending 原本的代码注册（0.05 / `fantasy_ending:fantasy_spell_power` / `MULTIPLY_BASE`）。
-进世界时会校验注册表里确实查得到这个键，缺了会报 ERROR。
+进世界时校验注册表里确实查得到这个键。
 
-**chloride 兼容**：纯反射从 Mixin 运行时里摘掉 chloride 那条失效的 `jei_rei_emi.JeiOverlayMixin`，
-不改 chloride / JEI 的 jar，版本门控只对 chloride 1.8.1 + JEI ≥ 15.70.0.221 生效。
-装本模组后**必须删掉实例里原来的 `chloridejeicompat-*.jar`**，否则两个模组会各摘一次（幂等但没必要）。
+**chloride 兼容**：纯反射从 Mixin 运行时摘掉 chloride 那条失效的 `jei_rei_emi.JeiOverlayMixin`，
+不改 jar，版本门控只对 chloride 1.8.1 + JEI ≥ 15.70.0.221 生效。
+装本模组后**删掉实例里原来的 `chloridejeicompat-*.jar`**。
+
+**Apollyon 饰品归还**：`processInventory` HEAD 快照（curio 槽位类型 + index + 盔甲槽），存玩家 ForgeData；
+右键水晶时拦截 `RightClickBlock`，按快照装回；槽位提供者先装并手动 `addTransientSlotModifiers`，
+否则同一 tick 里额外槽位还没生效。水晶里原有物品全部取出，溢出按配置掉地。
+
+**七咒之戒**：`SuperpositionHandler#isTheWorthyOne(Player)` RETURN 注入，创造模式直接 true；
+与附属 EnigmaticAddons 的同点 RETURN 注入叠加安全，不伪造计数（不影响 BlessRing 等级）。
+
+**内容过滤**：
+- 随模组：Malum 的 18 个 prideweave 配方/进度用 `forge:false` 条件屏蔽；原版 `splashes.txt` 覆盖；
+  Quark 彩虹 Q 按钮由 `QuarkQButtonMixin` 固定前景色。
+- 实例侧（跨模组资源顺序不可控，所以放在这里，已应用）：`moonlight-global-datapacks/content_filter`
+  用 `pack.mcmeta` 的 `filter` 屏蔽 Malum 配方/进度与 Mekanism 11 个 pride robit 皮肤；
+  资源包 `resourcepacks/content-filter.zip` 把 Malum pride 贴图变透明、lang 里的 pride 名称中性化、
+  IE 着色器名称/说明中性化、以及原版 splash 列表。
 
 ## 结构
 
@@ -42,23 +58,23 @@ src/main/java/com/wdlpiaoyi/wmisc/
   config/WmiscConfig.java  配置定义（[general] + [features.*]）
   feature/                 模块接口、登记表、模块清单
     impl/                  各模块实现
-  compat/                  跨模组探测与桥接（deadlock / chloride / spellbooks）
+  compat/                  跨模组桥接（deadlock / chloride / spellbooks / apollyon）
   mixin/                   Mixin 注入与按前置模组软开关的插件
   util/                    ConfigPeek：配置加载前的配置文件读取
-src/stubs/java/            仅供 Mixin 注解处理器校验的空壳目标类，不进 jar
+src/stubs/java/            仅供 Mixin 注解处理器/参数类型使用的空壳类，不进 jar
 src/main/resources/
   META-INF/mods.toml
   w_misc.mixins.json
-  data/fantasy_ending/...  数据包补丁
-  pack.mcmeta
+  data/fantasy_ending/...  数据包补丁（upgrade_orb_type）
+  data/malum/...           prideweave 屏蔽
+  assets/minecraft/texts/splashes.txt
 ```
 
 **加一个功能**：在 `feature/impl` 下实现 `WmiscFeature`，在 `Features.init()` 里 `register` 一行。
-配置段、状态日志、前置判定都会自动生效。
 
 ## 构建
 
-需要 **JDK 17**（1.20.1 必须；JDK 21 / 25 不行）：
+需要 **JDK 17**（1.20.1 必须；JDK 21 / 25 跑客户端可以，但构建用 17）：
 
 ```powershell
 $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.21.9-hotspot'
@@ -67,12 +83,10 @@ $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.21.9-hotspot'
 
 产物：`build/libs/w_misc-1.20.1-forge-0.1.0.jar`（`reobfJar` 已固定在 `jar` 之后，勿去掉）。
 
-Gradle 8.8，wrapper 走华为云镜像；ForgeGradle 6 不支持 configuration cache。
-
 ## 安装
 
 把产物 jar 放进 Prism 实例的 `mods/`。首次启动会在 `config/` 下生成 `w_misc-common.toml`。
 
 ## 备注
 
-`todo.md` 与 `死锁修复技术方案.md` 是本地工作笔记，已在 `.gitignore` 里排除，不入库。
+`todo.md`（本地待办）已在 `.gitignore` 里排除，不入库；`notes/` 是本机分析笔记，同样不入库。
