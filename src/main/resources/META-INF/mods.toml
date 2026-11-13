@@ -1,0 +1,59 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="w_misc"
+version="${mod_version}"
+displayName="wdlpiaoyi's Miscellaneous Things"
+authors="wdlpiaoyi"
+logoFile="logo.png"
+description='''
+wdlpiaoyi's Miscellaneous Things —— 1.20.1 / Forge 的杂项复合模组。
+
+把若干互相独立的小功能、兼容修补和跨模组联动集中在一个模组里，每个功能都能在
+config/w_misc-common.toml 的 [features.*] 段单独开关；前置模组缺失时自动跳过对应模块。
+'''
+
+[[dependencies.w_misc]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.w_misc]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.20.2)"
+    ordering="NONE"
+    side="BOTH"
+
+# 以下均为可选前置：只有对应模块用得到，缺失时模块自动跳过，模组本身照常启动。
+[[dependencies.w_misc]]
+    modId="iceandfire"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.w_misc]]
+    modId="l2weaponry"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.w_misc]]
+    modId="irons_spellbooks"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.w_misc]]
+    modId="fantasy_ending"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"

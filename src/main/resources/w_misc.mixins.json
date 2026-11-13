@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "minVersion": "0.8.5",
+  "package": "com.wdlpiaoyi.wmisc.mixin",
+  "plugin": "com.wdlpiaoyi.wmisc.mixin.WmiscMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "mixins.w_misc.refmap.json",
+  "mixins": [],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

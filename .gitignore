@@ -1,0 +1,26 @@
+# ===== 本地工作笔记（只在本地保留，不入库）=====
+/todo.md
+/死锁修复技术方案.md
+/notes/
+
+# ===== Gradle / 构建产物 =====
+/.gradle/
+/build/
+/libs/
+/run/
+/run-data/
+*.iml
+*.ipr
+*.iws
+
+# ===== IDE =====
+/.idea/
+/.eclipse/
+/.settings/
+/.classpath
+/.project
+/.vscode/
+
+# ===== 本地环境 =====
+/local.properties
+*.log

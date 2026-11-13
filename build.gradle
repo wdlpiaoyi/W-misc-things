@@ -1,0 +1,94 @@
+plugins {
+    id 'eclipse'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+    id 'org.spongepowered.mixin' version '0.7.38'
+}
+
+version = mod_version
+group = 'com.wdlpiaoyi.wmisc'
+archivesBaseName = "w_misc-1.20.1-forge"
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+
+    // 让 IDE 里的 run 配置也能拿到 resources
+    copyIdeResources = true
+
+    runs {
+        client {
+        }
+
+        server {
+            args '--nogui'
+        }
+
+        // 冒烟测试用：加载完所有模组、跑完 Gametest 后自动退出，不需要开窗口。
+        gameTestServer {
+            property 'forge.enabledGameTestNamespaces', 'w_misc'
+        }
+
+        configureEach {
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                w_misc {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    // 联调用的模组发布仓库：需要哪个模组再加坐标，不要在这里盲目加依赖。
+    maven {
+        name = 'modrinth'
+        url = 'https://api.modrinth.com/maven'
+    }
+    maven {
+        name = 'cursemaven'
+        url = 'https://cursemaven.com'
+    }
+    maven {
+        name = 'jitpack'
+        url = 'https://jitpack.io'
+    }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:1.20.1-${forge_version}"
+
+    // Mixin 注解处理器：生成 refmap，把注入目标映射到运行时名字。
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+mixin {
+    // 生成的 refmap 名要与 w_misc.mixins.json 里的 refmap 字段一致。
+    add sourceSets.main, 'mixins.w_misc.refmap.json'
+    config 'w_misc.mixins.json'
+    quiet
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    // mods.toml 里有中文描述：不显式指定 UTF-8，Windows 上会按平台编码（GBK）读写而乱码。
+    filteringCharset = 'UTF-8'
+    inputs.property 'mod_version', mod_version
+    filesMatching('META-INF/mods.toml') {
+        expand 'mod_version': mod_version
+    }
+}
+
+// 1.20.1 生产环境是 SRG 名，开发/运行环境是 Mojmap 名：
+// 少了 reobf，开发环境一切正常，装进真实实例就 NoSuchFieldError / NoSuchMethodError。
+tasks.named('jar') {
+    finalizedBy 'reobfJar'
+}
