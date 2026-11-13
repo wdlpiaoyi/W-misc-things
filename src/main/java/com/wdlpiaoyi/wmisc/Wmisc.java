@@ -22,14 +22,17 @@ public final class Wmisc {
     public static final String MODID = "w_misc";
     public static final Logger LOG = LoggerFactory.getLogger(MODID);
 
-    public Wmisc() {
+    public Wmisc(FMLJavaModLoadingContext context) {
         // 先登记模块，配置构建时才知道要生成哪些 [features.<id>] 段。
         Features.init();
         WmiscConfig.register();
 
-        IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+        IEventBus modBus = context.getModEventBus();
         modBus.addListener(this::onCommonSetup);
         modBus.addListener(this::onClientSetup);
+
+        // 构造期钩子：给需要抢在其它 mod 之前动作的模块（例如摘 Mixin）。
+        FeatureRegistry.onConstructAll();
     }
 
     private void onCommonSetup(FMLCommonSetupEvent event) {

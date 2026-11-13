@@ -1,0 +1,9 @@
+{
+  "amount": 0.05,
+  "attribute": "fantasy_ending:fantasy_spell_power",
+  "containerItem": {
+    "Count": 1,
+    "id": "fantasy_ending:fantasy_upgrade_orb"
+  },
+  "operation": "MULTIPLY_BASE"
+}

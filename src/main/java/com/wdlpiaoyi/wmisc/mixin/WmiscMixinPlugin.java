@@ -10,20 +10,19 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Mixin 软开关：按前置模组决定某条 mixin 是否生效。
+ * 最小化的、零第三方依赖的 Mixin 软开关。
  *
- * <p>Mixin 配置（{@code w_misc.mixins.json}）里 {@code required=false}，目标模组没装时
- * 只跳过对应注入，不会因为找不到目标类直接崩启动。</p>
+ * <p>Mixin 配置 {@code w_misc.mixins.json} 里 {@code required=false}：目标模组没装时只跳过对应注入，
+ * 不会因为找不到目标类把启动搞崩。</p>
  *
- * <p>新增需要前置的 mixin：在 {@link #REQUIRED_MODS} 里写 简单类名 → 需要的模组 id。
- * 这里只做「模组是否安装」的判断；配置开关读不到（配置此时还没加载），所以 mixin 级别的
- * 开关只能靠模组存在性，模块级开关请用运行时判断。</p>
+ * <p>新增需要前置的 mixin：在 {@link #REQUIRED_MODS} 里登记 简单类名 → 需要的模组 id。
+ * 这里只能做「模组是否安装」的判断：配置在此时还没加载，模块级开关请在运行时判断。</p>
  */
 public final class WmiscMixinPlugin implements IMixinConfigPlugin {
     /** mixin 简单类名 → 需要的模组 id。没登记的 mixin 一律应用。 */
     private static final Map<String, List<String>> REQUIRED_MODS = Map.of(
-            // 例：死锁修复注入 FMLModContainer，只在两个源模组都在时才需要
-            // "ConstructModSerializationMixin", List.of("iceandfire", "l2weaponry")
+            "IceAndFireConstructMixin", List.of("iceandfire"),
+            "L2WeaponryConstructMixin", List.of("l2weaponry")
     );
 
     @Override

@@ -38,6 +38,15 @@ public interface WmiscFeature {
     default void defineOptions(ForgeConfigSpec.Builder builder) {
     }
 
+    /**
+     * mod 构造期调用（Forge 配置还没加载）。
+     *
+     * <p>需要「比 common setup 更早」的模块用它，比如要在其它 mod 的事件之前摘 Mixin。
+     * 框架此时无法判断配置开关，实现方自己用 {@code ConfigPeek} 读文件判断。</p>
+     */
+    default void onConstruct() {
+    }
+
     /** 通用初始化阶段：只在模块启用且前置齐全时调用。 */
     default void onCommonSetup() {
     }

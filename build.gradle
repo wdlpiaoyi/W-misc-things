@@ -60,11 +60,21 @@ repositories {
     }
 }
 
+// Mixin 注解处理器要求 targets 里的类在编译期能找到。死锁修复注入的是第三方 mod 的类，
+// 这里用 src/stubs 下的空壳类满足校验；stubs 只进 compileOnly，不进 jar。
+sourceSets {
+    stubs {
+        java.srcDir 'src/stubs/java'
+    }
+}
+
 dependencies {
     minecraft "net.minecraftforge:forge:1.20.1-${forge_version}"
 
     // Mixin 注解处理器：生成 refmap，把注入目标映射到运行时名字。
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    compileOnly sourceSets.stubs.output
 }
 
 mixin {
@@ -92,3 +102,6 @@ tasks.named('processResources', ProcessResources).configure {
 tasks.named('jar') {
     finalizedBy 'reobfJar'
 }
+
+
+

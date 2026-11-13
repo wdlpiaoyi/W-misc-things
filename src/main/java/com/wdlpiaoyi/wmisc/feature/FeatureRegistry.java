@@ -86,6 +86,19 @@ public final class FeatureRegistry {
         return configEnabled(feature) && missingMods(feature).isEmpty();
     }
 
+    /**
+     * 构造期钩子：此时 Forge 配置还没加载，模块自己决定要不要干活。
+     */
+    public static void onConstructAll() {
+        for (Entry entry : ENTRIES.values()) {
+            try {
+                entry.feature.onConstruct();
+            } catch (Throwable t) {
+                Wmisc.LOG.error("[w_misc] 模块 {} 构造期初始化失败", entry.feature.id(), t);
+            }
+        }
+    }
+
     /** 在 common setup 阶段统一判定并初始化，避免每个模块各自判断。 */
     public static void activateAll() {
         for (Entry entry : ENTRIES.values()) {

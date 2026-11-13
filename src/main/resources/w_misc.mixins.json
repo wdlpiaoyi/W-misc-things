@@ -5,7 +5,10 @@
   "plugin": "com.wdlpiaoyi.wmisc.mixin.WmiscMixinPlugin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "mixins.w_misc.refmap.json",
-  "mixins": [],
+  "mixins": [
+    "IceAndFireConstructMixin",
+    "L2WeaponryConstructMixin"
+  ],
   "client": [],
   "injectors": {
     "defaultRequire": 1
