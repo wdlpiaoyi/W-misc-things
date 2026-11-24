@@ -35,6 +35,22 @@ $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.21.9-hotspot'
 `compileOnly fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')`：
 Apollyon 饰品归还用到 curios 槽位 API，仓库是 `https://maven.theillusivec4.top/`。
 
+spear-core 没有可用 maven 坐标，所以 `net.minecraft.spearcore.item.SpearLike` 只在
+`src/stubs/java` 放了个空接口（只进 `compileOnly`，不进 jar），运行期由实例里的 spear-core 提供。
+真实类型只出现在 `MowzieSpearLikeSupportMixin` 的泛型参数与转型里，方法调用全走
+`SpearCoreBridge` 的反射，所以空接口够用。
+
+## 游戏内命令
+
+| 命令 | 作用 |
+|---|---|
+| `/wmisc reload` | 重读 `config/w_misc-common.toml`，把值同步给各模块（不重建 ForgeConfigSpec） |
+| `/wmisc wtc_resource_hud` | 打开 WTC 资源条位置编辑界面（拖拽/滚轮/方向键） |
+
+两者都注册在 `RegisterClientCommandsEvent` 上，所以是客户端命令（不需要 OP，联机也能用）。
+新增可热重载的选项：模块实现 `WmiscFeature#onConfigReload(Map)`，用 `ConfigPeek.applyBoolean/applyInt/applyDouble`
+把值写回自己的字段。
+
 ## Mixin 约定（踩过的坑）
 
 1. **目标类不在编译期类路径**时，用 `@Mixin(targets = "全名", remap = false)` + `@Pseudo`，
@@ -48,6 +64,22 @@ Apollyon 饰品归还用到 curios 槽位 API，仓库是 `https://maven.theillu
 4. 需要参数类型（例如 `PlayerTickrateExecutor$InventoryWork`）而目标类不在 classpath 时，
    在 `src/stubs/java` 放同名空壳类，只进 `compileOnly`，**不要进 jar**。
 5. 跨模组类的方法名放进 refmap 会坏，mod 自有方法一律 `remap = false`；可选目标再加 `require = 0`。
+6. **要改被注入类本身（不只是注入方法）时，用 `IMixinConfigPlugin#preApply` 直接改 `ClassNode`**：
+   `L2ModularBlockFinalPatch` 就是这么摘 l2modularblock 的 `ACC_FINAL` 的，不受目标方法名/描述符影响；
+   改写失败只记日志，别抛异常拦启动。
+7. **同一条指令上的 `@Redirect` 冲突**：Mixin 0.8.5 一条指令只允许一个 redirect。prepare 阶段按
+   mixin 优先级升序处理，后到的如果 priority 不高于先到的，直接被跳过并打
+   `@Redirect conflict. Skipping ...`。**被跳过不等于没事**：如果对方那条是 `require = 1`
+   （carbon 的 `imo$foil` 就是），它会抛 `InjectionError: (0/1) succeeded` 直接崩档；而且这类崩
+   发生在 mod 构造**之前**（Bootstrap 阶段加载 `ItemRenderer` 就触发），mod 构造期再动手已经来不及。
+   两种处理方式：
+   - 双方都有 `require = 0`、且你愿意接管语义 → 用 `@Mixin(priority = 1500)` 抢，注意被抢走的
+     一方会静默失效，必须把它的逻辑合并进你的 handler；
+   - 对方 `require = 1` / 不想赌 priority → **别抢**，反过来在自己配置的
+     `IMixinConfigPlugin#acceptTargets`（此时所有配置已 prepare、还没有类被应用）里用
+     `compat/mixin/MixinDetacher` 把对方那条 mixin 摘掉，再复刻/合并它的其余注入
+     （`carbon_saintsdragons_foil` 就是这么做的）。
+   可选开关用 `IMixinConfigPlugin#shouldApplyMixin` + `ConfigPeek` 在启动前判定（运行期热改无效）。
 
 ## 实例侧验证
 
@@ -55,7 +87,7 @@ Apollyon 饰品归还用到 curios 槽位 API，仓库是 `https://maven.theillu
 
 ```powershell
 # 拷贝产物
-Copy-Item .\build\libs\w_misc-1.20.1-forge-0.1.0.jar 'C:\Minecraft\PrismLauncher-Portable\instances\Niubiosis\minecraft\mods\' -Force
+Copy-Item .\build\libs\w_misc-1.20.1-forge-0.2.2.jar 'C:\Minecraft\PrismLauncher-Portable\instances\Niubiosis\minecraft\mods\' -Force
 # 启动并看日志
 Start-Process 'C:\Minecraft\PrismLauncher-Portable\prismlauncher.exe' -ArgumentList '-d','C:\Minecraft\PrismLauncher-Portable','-l','Niubiosis','-o','测试名'
 ```

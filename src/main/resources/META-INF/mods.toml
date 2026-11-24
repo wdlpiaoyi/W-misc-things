@@ -57,3 +57,31 @@ config/w_misc-common.toml 的 [features.*] 段单独开关；前置模组缺失�
     versionRange="[0,)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.w_misc]]
+    modId="goeticlegacy"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.w_misc]]
+    modId="resolutionscaler"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.w_misc]]
+    modId="mowziesmobs"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.w_misc]]
+    modId="spearcore"
+    mandatory=false
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"

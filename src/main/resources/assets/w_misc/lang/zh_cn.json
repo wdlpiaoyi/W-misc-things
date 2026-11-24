@@ -1,0 +1,13 @@
+{
+  "wmisc.command.reloaded": "w_misc 配置已重读，选项立即生效",
+  "wmisc.command.reload_failed": "重读配置失败，沿用内存里的旧值",
+  "wmisc.wtc_hud.screen_title": "WTC 资源条位置",
+  "wmisc.wtc_hud.hint": "拖拽移动 · 滚轮缩放 · 方向键微调（Shift ×10）",
+  "wmisc.wtc_hud.saved": "WTC 资源条位置已保存",
+  "wmisc.wtc_hud.reset": "重置",
+  "wmisc.wtc_hud.unavailable": "没接上 Wizard Terra Curios 的资源条配置，无法打开编辑界面",
+  "wmisc.wtc_hud.feature_off": "模块 wtc_resource_hud 在配置里被关掉了",
+  "wmisc.wtc_hud.adrenaline": "肾上腺素",
+  "wmisc.wtc_hud.rage": "怒气",
+  "wmisc.mowzie.sculptor_hover": "爬到试炼顶端并右键雕塑家即可通过！\n反作弊已关闭：放置/破坏方块、传送、飞行都不再判失败。"
+}

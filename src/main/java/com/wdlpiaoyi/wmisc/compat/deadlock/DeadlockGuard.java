@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -39,6 +40,9 @@ public final class DeadlockGuard {
     /** 这对 mod 共用一把锁：不同时进入危险区。 */
     private static final ReentrantLock PAIR_LOCK = new ReentrantLock();
 
+    /** 等锁超过这么久还没拿到，大概率另一侧卡死了 —— 打一条 warn 方便定位，但继续排队。 */
+    private static final long WAIT_WARN_SECONDS = 60L;
+
     private static final Set<String> ENGAGED = ConcurrentHashMap.newKeySet();
 
     private static final boolean ENABLED = resolveEnabled();
@@ -55,13 +59,31 @@ public final class DeadlockGuard {
         if (LOG_EVENTS) {
             LOG.info("[deadlock_fix] waiting ({}) thread={}", modId, Thread.currentThread().getName());
         }
-        PAIR_LOCK.lock();
+        awaitPairLock(modId);
         if (ENGAGED.add(modId)) {
             LOG.info("[deadlock_fix] 已接管 {} 的构造阶段（构造串行化生效）", modId);
         }
         if (LOG_EVENTS) {
             LOG.info("[deadlock_fix] acquired ({}) thread={}", modId, Thread.currentThread().getName());
         }
+    }
+
+    /**
+     * 拿共享锁，但先限时等一次：等不到就打 warn 再无限排队。
+     *
+     * <p>被挡住的线程在入口方法里还没碰过任何一个 Iaf* 类，所以不存在成环的可能。</p>
+     */
+    private static void awaitPairLock(String modId) {
+        try {
+            if (PAIR_LOCK.tryLock(WAIT_WARN_SECONDS, TimeUnit.SECONDS)) {
+                return;
+            }
+            LOG.warn("[deadlock_fix] {} 等共享锁超过 {} 秒，另一侧可能卡住了；继续排队。thread={}",
+                    modId, WAIT_WARN_SECONDS, Thread.currentThread().getName());
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+        PAIR_LOCK.lock();
     }
 
     /** 在入口方法 RETURN 处调用；未持锁时是安全的 no-op。 */

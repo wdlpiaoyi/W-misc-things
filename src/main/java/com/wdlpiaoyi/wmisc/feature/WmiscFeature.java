@@ -3,6 +3,7 @@ package com.wdlpiaoyi.wmisc.feature;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 一个独立功能模块。所有模块都：可单独开关、可声明前置模组、可以往自己的配置段里加选项。
@@ -17,6 +18,14 @@ public interface WmiscFeature {
     /** 一句话说明，出现在配置注释和启动日志里。 */
     default String summary() {
         return "";
+    }
+
+    /**
+     * 运行期重读配置（{@code /wmisc reload}）后调用：传入本模块配置段的原始键值。
+     *
+     * <p>模块自己把值同步到内存里的字段，让改动立即生效；不要在这里重建 ForgeConfigSpec。</p>
+     */
+    default void onConfigReload(Map<String, String> values) {
     }
 
     /** 配置默认值。 */

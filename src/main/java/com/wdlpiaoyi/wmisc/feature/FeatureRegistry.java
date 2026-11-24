@@ -2,6 +2,7 @@ package com.wdlpiaoyi.wmisc.feature;
 
 import com.wdlpiaoyi.wmisc.Wmisc;
 import com.wdlpiaoyi.wmisc.compat.Compat;
+import com.wdlpiaoyi.wmisc.util.ConfigPeek;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 import java.util.ArrayList;
@@ -151,5 +152,47 @@ public final class FeatureRegistry {
             }
         }
         Wmisc.LOG.info(log.toString());
+    }
+
+    /**
+     * 运行期判定：配置当前值 + 前置是否齐全。
+     *
+     * <p>与 {@link #isActive}（启动时定下的快照）不同，这里每次都读当前配置，
+     * 所以 /wmisc reload 之后能立刻反映出来。</p>
+     */
+    public static boolean liveActive(WmiscFeature feature) {
+        return configEnabled(feature) && missingMods(feature).isEmpty();
+    }
+
+    public static boolean liveActive(String id) {
+        Entry entry = ENTRIES.get(id);
+        return entry != null && configEnabled(entry.feature) && missingMods(entry.feature).isEmpty();
+    }
+
+    /**
+     * 运行期重读配置文件，把值同步给每个模块（不重建 ForgeConfigSpec）。
+     *
+     * <p>段名统一是 {@code features.<id>}；模块级 enabled 由框架写回它的 toggle，
+     * 其余选项交给模块自己的 {@link WmiscFeature#onConfigReload}。</p>
+     */
+    public static void reloadOptionsFromFile() {
+        Map<String, Map<String, String>> file = ConfigPeek.reload();
+        for (Entry entry : ENTRIES.values()) {
+            Map<String, String> values = file.get("features." + entry.feature.id());
+            if (values == null) {
+                values = Map.of();
+            }
+            try {
+                if (entry.toggle != null) {
+                    String raw = values.get("enabled");
+                    if (raw != null) {
+                        entry.toggle.set(ConfigPeek.parseBoolean(raw, entry.feature.defaultEnabled()));
+                    }
+                }
+                entry.feature.onConfigReload(values);
+            } catch (Throwable t) {
+                Wmisc.LOG.warn("[w_misc] 重读模块 {} 的配置失败", entry.feature.id(), t);
+            }
+        }
     }
 }

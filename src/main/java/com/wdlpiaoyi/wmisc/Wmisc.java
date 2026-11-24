@@ -1,8 +1,10 @@
 package com.wdlpiaoyi.wmisc;
 
+import com.wdlpiaoyi.wmisc.compat.WmiscCommands;
 import com.wdlpiaoyi.wmisc.config.WmiscConfig;
 import com.wdlpiaoyi.wmisc.feature.FeatureRegistry;
 import com.wdlpiaoyi.wmisc.feature.Features;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -43,7 +45,11 @@ public final class Wmisc {
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(FeatureRegistry::clientSetupAll);
+        event.enqueueWork(() -> {
+            FeatureRegistry.clientSetupAll();
+            // /wmisc 客户端命令：重读配置、打开资源条位置编辑界面。
+            MinecraftForge.EVENT_BUS.addListener(WmiscCommands::onRegisterClientCommands);
+        });
     }
 }
 

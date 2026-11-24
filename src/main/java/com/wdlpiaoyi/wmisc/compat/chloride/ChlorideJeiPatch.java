@@ -1,5 +1,6 @@
 package com.wdlpiaoyi.wmisc.compat.chloride;
 
+import com.wdlpiaoyi.wmisc.compat.mixin.MixinDetacher;
 import com.wdlpiaoyi.wmisc.util.ConfigPeek;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.forgespi.language.IModFileInfo;
@@ -28,6 +29,9 @@ public final class ChlorideJeiPatch {
     private static final String TARGET_MIXIN = "me.srrapero720.chloride.mixins.impl.jei_rei_emi.JeiOverlayMixin";
     private static final String TARGET_CLASS = "mezz.jei.gui.overlay.IngredientListOverlay";
     private static final String RELATIVE_MIXIN = "jei_rei_emi.JeiOverlayMixin";
+
+    private static final MixinDetacher.Spec SPEC =
+            new MixinDetacher.Spec(CONFIG_NAME, TARGET_MIXIN, RELATIVE_MIXIN, TARGET_CLASS);
 
     private static final int MAX_ATTEMPTS = 3;
 
@@ -79,7 +83,7 @@ public final class ChlorideJeiPatch {
 
         long started = System.nanoTime();
         try {
-            MixinDetacher.Status status = MixinDetacher.run(stage, verbose());
+            MixinDetacher.Status status = MixinDetacher.run(stage, SPEC, verbose());
             long millis = (System.nanoTime() - started) / 1_000_000L;
             if (status == MixinDetacher.Status.NOT_READY) {
                 LOG.info("[{}] 尚未应用（{} ms，第 {}/{} 次），稍后重试", stage, millis, attempts, MAX_ATTEMPTS);
@@ -96,22 +100,6 @@ public final class ChlorideJeiPatch {
                 failUnfinished(stage, t.toString());
             }
         }
-    }
-
-    static String configName() {
-        return CONFIG_NAME;
-    }
-
-    static String targetMixin() {
-        return TARGET_MIXIN;
-    }
-
-    static String targetClass() {
-        return TARGET_CLASS;
-    }
-
-    static String relativeMixin() {
-        return RELATIVE_MIXIN;
     }
 
     private static String gateReasonCache;

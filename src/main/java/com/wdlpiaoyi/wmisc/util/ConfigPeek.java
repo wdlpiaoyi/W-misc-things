@@ -1,5 +1,6 @@
 package com.wdlpiaoyi.wmisc.util;
 
+import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,8 @@ import java.util.Map;
  * <p>Forge 的 COMMON 配置要等所有 mod 构造完之后才加载，所以「构造期就要知道开关」的功能
  * （死锁修复、chloride 补丁）必须自己读一遍 TOML。只解析本模组自己写的、结构固定的 key = value，
  * 不支持数组、内联表、多行字符串；解析失败一律按默认值处理，绝不抛错。</p>
+ *
+ * <p>运行期 {@code /wmisc reload} 走 {@link #reload()}：重读文件并清缓存，再把值写回各模块。</p>
  */
 public final class ConfigPeek {
     public static final String FILE_NAME = "w_misc-common.toml";
@@ -36,16 +39,38 @@ public final class ConfigPeek {
         return values == null ? Map.of() : values;
     }
 
+    /** 丢掉缓存重新读文件；返回整份解析结果（段名 → 键值）。 */
+    public static synchronized Map<String, Map<String, String>> reload() {
+        cache = parse();
+        if (cache == null) {
+            cache = new HashMap<>();
+        }
+        return cache;
+    }
+
     public static boolean getBoolean(String section, String key, boolean fallback) {
         String raw = section(section).get(key);
-        if (raw == null) {
-            return fallback;
-        }
-        return switch (raw.toLowerCase(Locale.ROOT)) {
+        return raw == null ? fallback : parseBoolean(raw, fallback);
+    }
+
+    public static boolean parseBoolean(String raw, boolean fallback) {
+        return switch (raw.trim().toLowerCase(Locale.ROOT)) {
             case "true", "1", "yes", "on" -> true;
             case "false", "0", "no", "off" -> false;
             default -> fallback;
         };
+    }
+
+    public static int getInt(String section, String key, int fallback) {
+        String raw = section(section).get(key);
+        if (raw == null) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException notANumber) {
+            return fallback;
+        }
     }
 
     public static String getString(String section, String key, String fallback) {
@@ -96,5 +121,39 @@ public final class ConfigPeek {
             return value.substring(1, value.length() - 1);
         }
         return value;
+    }
+
+    /** 把重读到的整数值写回 ForgeConfigSpec；解析失败就保持原值。 */
+    public static void applyInt(Map<String, String> values, String key, ForgeConfigSpec.IntValue target) {
+        String raw = values.get(key);
+        if (raw == null || target == null) {
+            return;
+        }
+        try {
+            target.set(Integer.parseInt(raw.trim()));
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    public static void applyDouble(Map<String, String> values, String key, ForgeConfigSpec.DoubleValue target) {
+        String raw = values.get(key);
+        if (raw == null || target == null) {
+            return;
+        }
+        try {
+            target.set(Double.parseDouble(raw.trim()));
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    public static void applyBoolean(Map<String, String> values, String key, ForgeConfigSpec.BooleanValue target) {
+        String raw = values.get(key);
+        if (raw == null || target == null) {
+            return;
+        }
+        try {
+            target.set(parseBoolean(raw, target.get()));
+        } catch (RuntimeException ignored) {
+        }
     }
 }

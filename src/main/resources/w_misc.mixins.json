@@ -8,15 +8,34 @@
   "mixins": [
     "IceAndFireInitMixin",
     "L2WeaponryItemsMixin",
+    "L2WeaponryCompatDispatchMixin",
+    "L2ModularBlockFinalMixin",
     "ApollyonConfiscateSnapshotMixin",
     "MixinSuperpositionHandlerWorthy",
     "ResourceManagerFilterMixin",
     "MalumPrideItemRemovalMixin",
     "MalumPrideArmorSkinMixin",
-    "ImmersiveEngineeringShaderMixin"
+    "ImmersiveEngineeringShaderMixin",
+    "MowzieSpearLikeSupportMixin",
+    "MowzieSpearItemMixin",
+    "SculptorTestCheatMixin"
   ],
   "client": [
-    "QuarkQButtonMixin"
+    "QuarkQButtonMixin",
+    "FantasyGeckolibAnimTimeMixin",
+    "IronsAnvilRecipeMakerMixin",
+    "IronsAnvilRecipeMixin",
+    "IronsAnvilTupleMixin",
+    "IronsAnvilJeiRegistrationMixin",
+    "WtcResourceBarMixin",
+    "GgtuGoeticDimensionMixin",
+    "NoNarratorLibraryMixin",
+    "NoNarratorFunctionsMixin",
+    "NoNarratorHotkeyMixin",
+    "MowzieSpearClientSetupMixin",
+    "MowzieSpearReequipMixin",
+    "SculptorTradeHoverMixin",
+    "ItemRendererAfterimageRedirectMixin"
   ],
   "injectors": {
     "defaultRequire": 1

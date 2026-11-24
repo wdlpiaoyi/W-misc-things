@@ -1,0 +1,13 @@
+{
+  "wmisc.command.reloaded": "w_misc config reloaded from disk",
+  "wmisc.command.reload_failed": "Failed to reload w_misc config",
+  "wmisc.wtc_hud.screen_title": "WTC resource bar layout",
+  "wmisc.wtc_hud.hint": "Drag to move · scroll to scale · arrow keys to nudge (Shift ×10)",
+  "wmisc.wtc_hud.saved": "WTC bar positions saved",
+  "wmisc.wtc_hud.reset": "Reset",
+  "wmisc.wtc_hud.unavailable": "Could not hook Wizard Terra Curios' bar config",
+  "wmisc.wtc_hud.feature_off": "Module wtc_resource_hud is disabled in the config",
+  "wmisc.wtc_hud.adrenaline": "Adrenaline",
+  "wmisc.wtc_hud.rage": "Rage",
+  "wmisc.mowzie.sculptor_hover": "Reach the top of the course and right-click the Sculptor to pass!\nAnti-cheat is disabled: building, breaking, teleporting and flying no longer fail the test."
+}
