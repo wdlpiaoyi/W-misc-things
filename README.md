@@ -16,8 +16,8 @@ Minecraft **1.20.1** / **Forge 47.x** 的杂项复合模组：若干互相独立
 | `fantasy_ending_upgrade_orb` | 补 `fantasy_ending:fantasy_power` 的 `upgrade_orb_type` 数据条目 | irons_spellbooks、fantasy_ending | 已随包提供 |
 | `chloride_jei_bundle` | 并入 chloride 1.8.1 / JEI 15.70+ 兼容补丁（替代独立 jar） | chloride、jei | 已实测生效 |
 | `irons_arcane_anvil_jei` | 裁掉奥术铁砧 JEI 配方的组合爆炸（配方条数与每槽候选设上限） | irons_spellbooks、jei | 已实现 |
-| `goety_apollyon_curio_return` | Apollyon 战后水晶把饰品按原槽位装回，而不是一件件掉到脚下 | revelationfix、curios | 待实机战斗验证 |
-| `enigmatic_legacy_creative` | 创造模式下无视七咒之戒的佩戴时长条件 | enigmaticlegacy（含 addons） | 待实机验证 |
+| `goety_apollyon_curio_return` | Apollyon 战后水晶把饰品按原槽位装回，而不是一件件掉到脚下 | revelationfix、curios | 已实测生效 |
+| `enigmatic_legacy_creative` | 创造模式下无视七咒之戒的佩戴时长条件 | enigmaticlegacy（含 addons） | 已实测生效 |
 | `enigmatic_soul_recovery` | 每 N tick（默认 6000 = 5 分钟）自动回复一点丢失的灵魂水晶 | enigmaticlegacy | 已实现 |
 | `goetic_ggtu_dimension` | 个人/心灵维度里暂停 GGTU 的帧生成与超分：修 skybox/边界墙闪烁与超分穿透 | goeticlegacy、resolutionscaler | 已实现 |
 | `spearcore_mowzie_spear` | 让 `mowziesmobs:spear` 走 SpearCore 的长矛逻辑（戳刺、蓄力、动画、攻击力） | mowziesmobs、spearcore | 已实现 |
