@@ -31,6 +31,9 @@
 # 从成品 jar 恢复源码时用的反编译工作区（不入库）
 /.jar-recovery/
 
+# DeepSeek Harness 的本地会话数据（不入库）
+/.dsh/
+
 # 子代理解出来的第三方资源，别放进仓库
 /assets/
 /data/
